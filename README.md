@@ -164,3 +164,142 @@ Incluye compilación y pruebas JUnit.
 
 Laboratorio basado en el enunciado histórico del curso (Highlander, Productor/Consumidor, Búsqueda distribuida), modernizado a **Java 21**.  
 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br />Este contenido hace parte del curso Arquitecturas de Software (ECI) y está licenciado como <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+
+# REPORTE DE LABORATORIO
+### Nombres:  
+  - Laura Alejandra Venegas Piraban  
+  - Sergio Alejandro Idarraga Torres  
+
+## PARTE I — LAB 3 ARSW  
+
+## Productor / Consumidor — wait/notify
+
+---
+
+## 1. Monitoreo de CPU con jVisualVM
+
+Se ejecutó el programa Productor/Consumidor y se monitoreó el consumo de CPU utilizando jVisualVM.
+
+### Modo Spin
+
+En modo spin, se obtuvo un consumo de CPU del 13.2%.
+
+En este modo se utiliza la clase `BusySpinQueue`.
+
+<p align="center">
+  <img src="Img/altoUsoCPU.png" width="500"/>
+</p>
+
+### Modo Monitor
+
+En modo monitor, el consumo fue significativamente menor: 2.3%.
+
+En este caso se ejecuta la clase `BoundedBuffer`, que implementa sincronización mediante `wait()` y `notify()`.
+
+<p align="center">
+  <img src="Img/bajoUsoCPU.png" width="500"/>
+</p>
+
+**¿Por qué ocurre el alto consumo?**
+
+El alto consumo se debe principalmente a la implementación de bucles que no tiene condición de salida y por ende se sigue ejecutando.  
+
+Esto ocurre en los métodos `take()` y `put()` de la clase `BusySpinQueue`.
+
+<p align="center">
+  <img src="Img/ciclosIneficientes.png" width="500"/>
+</p>
+
+---
+
+## 2. Productor lento y consumidor rápido
+
+Se ajustó la implementación para usar CPU de manera más eficiente cuando:
+
+- El productor es lento.
+- El consumidor es rápido.
+
+Para lograrlo:
+
+- Se aumentó el valor de `delayMs` del productor.
+- Se mantuvo igual el tiempo del consumidor.  
+
+#### Productor lento
+
+<p align="center">
+  <img src="Img/productorLento.png" width="500"/>
+</p>
+
+#### Consumidor rápido
+
+<p align="center">
+  <img src="Img/consumidorRapido.png" width="500"/>
+</p>
+
+### Resultados en modo Monitor
+
+<p align="center">
+  <img src="Img/monitor-ProductorLento-ConsumidorRapido.png" width="500"/>
+</p>
+
+Se observó un menor uso de CPU, aunque el tiempo total de ejecución aumentó debido a la lentitud del productor.
+
+### Resultados en modo Spin
+
+<p align="center">
+  <img src="Img/spin-ProductorLento-ConsumidorRapido.png" width="500"/>
+</p>
+
+En este modo el consumo de CPU fue considerablemente mayor, confirmando que la espera activa es menos eficiente.
+
+---
+
+## 3. Productor rápido y consumidor lento (cola acotada)
+
+Se configuró el escenario contrario:
+
+- Productor rápido.
+- Consumidor lento.
+- Límite de stock.
+
+### Cambios realizados
+
+#### Productor rápido
+
+<p align="center">
+  <img src="Img/productorRapido.png" width="500"/>
+</p>
+
+#### Consumidor lento
+
+<p align="center">
+  <img src="Img/consumidorLento.png" width="500"/>
+</p>
+
+### Límite de stock
+
+Se modificó el valor por defecto del atributo `capacity`, que era 16, y se cambió a 8 para trabajar con una cola más pequeña.
+
+<p align="center">
+  <img src="Img/limiteDeStock.png" width="500"/>
+</p>
+
+### Resultados en modo Monitor
+
+<p align="center">
+  <img src="Img/monitor-productorRapido-consumidorLento-stock.png" width="500"/>
+</p>
+
+El límite de stock se respetó correctamente sin necesidad de espera activa, gracias al uso de `wait()` y `notify()`.
+
+### Resultados en modo Spin
+
+<p align="center">
+  <img src="Img/spin-productorRapido-consumidorLento-stock.png" width="500"/>
+</p>
+
+En comparación con el modo monitor, el modo spin presentó un uso considerablemente mayor de CPU debido a la espera activa.
+
+---
+
+
