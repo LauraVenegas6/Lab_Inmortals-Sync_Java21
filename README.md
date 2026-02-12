@@ -187,7 +187,7 @@ En modo spin, se obtuvo un consumo de CPU del 13.2%.
 En este modo se utiliza la clase BusySpinQueue.
 
 <p align="center">
-  <img src="img/altoUsoCPU.png" width="500"/>
+  <img src="img/AltoUsoCPU.png" width="500"/>
 </p>
 
 ### Modo Monitor
@@ -281,7 +281,7 @@ Se configuró el escenario contrario:
 Se modificó el valor por defecto del atributo capacity, que era 16, y se cambió a 8 para trabajar con una cola más pequeña.
 
 <p align="center">
-  <img src="img/limiteDeStock.png" width="500"/>
+  <img src="img/LimiteDeStock.png" width="500"/>
 </p>
 
 ### Resultados en modo Monitor
