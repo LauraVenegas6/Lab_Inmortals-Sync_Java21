@@ -75,18 +75,60 @@ public final class ControlFrame extends JFrame {
 
   private void onPauseAndCheck(ActionEvent e) {
     if (manager == null) return;
+    
     manager.pause();
+    try {
+      manager.controller().waitUntilAllPaused();
+      Thread.sleep(50);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      output.setText("⚠️ Pausa interrumpida\n");
+      return;
+    }
+    
     List<Immortal> pop = manager.populationSnapshot();
-    long sum = 0;
+    long actualTotal = 0;
     StringBuilder sb = new StringBuilder();
+    
+    sb.append("════════════════════════════════\n");
+    sb.append("   ESTADO DE LOS INMORTALES\n");
+    sb.append("════════════════════════════════\n\n");
+    
     for (Immortal im : pop) {
       int h = im.getHealth();
-      sum += h;
-      sb.append(String.format("%-14s : %5d%n", im.name(), h));
+      actualTotal += h;
+      String status = im.isAlive() ? "🟢" : "💀";
+      sb.append(String.format("%s %-14s : %5d\n", status, im.name(), h));
     }
+    
+    long fights = manager.scoreBoard().totalFights();
+    long expectedTotal = manager.expectedHealth();
+    long difference = actualTotal - expectedTotal;
+    boolean invariantOK = manager.checkInvariant();
+    
+    sb.append("\n================================\n");
+    sb.append("   VALIDACIÓN DEL INVARIANTE\n");
+    sb.append("================================\n");
+    sb.append(String.format("Salud Total Actual:   %d\n", actualTotal));
+    sb.append(String.format("Salud Total Esperada: %d\n", expectedTotal));
+    sb.append(String.format("Peleas Registradas:   %d\n", fights));
+    sb.append(String.format("Inmortales Vivos:     %d / %d\n", manager.aliveCount(), pop.size()));
     sb.append("--------------------------------\n");
-    sb.append("Total Health: ").append(sum).append('\n');
-    sb.append("Score (fights): ").append(manager.scoreBoard().totalFights()).append('\n');
+    sb.append(String.format("Invariante: %s %s\n", 
+        invariantOK ? "✓" : "✗", 
+        invariantOK ? "SE CUMPLE" : "ROTO"));
+    
+    if (!invariantOK) {
+      sb.append(String.format("Diferencia: %d\n", difference));
+      sb.append("\n El invariante NO se cumple.\n");
+      sb.append("Posibles causas:\n");
+      sb.append("- Race conditions en peleas\n");
+      sb.append("- Lecturas durante actualización\n");
+      sb.append("- Orden de locks inconsistente\n");
+    } else {
+      sb.append("\n✓ El sistema es consistente.\n");
+    }
+    
     output.setText(sb.toString());
   }
 
@@ -95,7 +137,10 @@ public final class ControlFrame extends JFrame {
     manager.resume();
   }
 
-  private void onStop(ActionEvent e) { safeStop(); }
+  private void onStop(ActionEvent e) { 
+    safeStop();
+    output.setText("✓ Simulación detenida correctamente.\n");
+  }
 
   private void safeStop() {
     if (manager != null) {

@@ -8,7 +8,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class Immortal implements Runnable {
   private final String name;
-  private int health;
+  private volatile int health; 
   private final int damage;
   private final List<Immortal> population;
   private final ScoreBoard scoreBoard;
@@ -25,7 +25,7 @@ public final class Immortal implements Runnable {
   }
 
   public String name() { return name; }
-  public synchronized int getHealth() { return health; }
+  public int getHealth() { return health; }
   public boolean isAlive() { return getHealth() > 0 && running; }
   public void stop() { running = false; }
 
@@ -35,7 +35,10 @@ public final class Immortal implements Runnable {
         controller.awaitIfPaused();
         if (!running) break;
         var opponent = pickOpponent();
-        if (opponent == null) continue;
+        if (opponent == null) {
+          Thread.sleep(2);
+          continue;
+        }
         String mode = System.getProperty("fight", "ordered");
         if ("naive".equalsIgnoreCase(mode)) fightNaive(opponent);
         else fightOrdered(opponent);
@@ -43,6 +46,8 @@ public final class Immortal implements Runnable {
       }
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
+    } finally {
+      controller.threadFinished();
     }
   }
 
@@ -59,8 +64,16 @@ public final class Immortal implements Runnable {
     synchronized (this) {
       synchronized (other) {
         if (this.health <= 0 || other.health <= 0) return;
-        other.health -= this.damage;
-        this.health += this.damage / 2;
+        
+        int effectiveDamage = Math.min(other.health, this.damage);
+        
+        other.health -= effectiveDamage;
+        if (other.health == 0) {
+          other.stop();
+        }
+        
+        this.health += effectiveDamage / 2;
+        
         scoreBoard.recordFight();
       }
     }
@@ -72,8 +85,16 @@ public final class Immortal implements Runnable {
     synchronized (first) {
       synchronized (second) {
         if (this.health <= 0 || other.health <= 0) return;
-        other.health -= this.damage;
-        this.health += this.damage / 2;
+        
+        int effectiveDamage = Math.min(other.health, this.damage);
+        
+        other.health -= effectiveDamage;
+        if (other.health == 0) {
+          other.stop();
+        }
+        
+        this.health += effectiveDamage / 2;
+        
         scoreBoard.recordFight();
       }
     }
