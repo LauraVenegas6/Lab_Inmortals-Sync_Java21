@@ -163,8 +163,11 @@ Incluye compilación y pruebas JUnit.
 ## Créditos y licencia
 
 Laboratorio basado en el enunciado histórico del curso (Highlander, Productor/Consumidor, Búsqueda distribuida), modernizado a **Java 21**.  
-<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br />Este contenido hace parte del curso Arquitecturas de Software (ECI) y está licenciado como <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
+<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc/4.0/88x31.png" /></a><br />Este contenido hace parte del curso Arquitecturas de Software (ECI) y está licenciado como <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.  
+---
 
+
+---
 # REPORTE DE LABORATORIO
 ### Nombres:  
   - Laura Alejandra Venegas Piraban  
@@ -300,6 +303,33 @@ El límite de stock se respetó correctamente sin necesidad de espera activa, gr
 
 En comparación con el modo monitor, el modo spin presentó un uso considerablemente mayor de CPU debido a la espera activa.
 
----
+---  
+## Parte II — (Antes de terminar la clase) Búsqueda distribuida y condición de parada
+Reescribe el **buscador de listas negras** para que la búsqueda **se detenga tan pronto** el conjunto de hilos detecte el número de ocurrencias que definen si el host es confiable o no (BLACK_LIST_ALARM_COUNT). Debe:
+- **Finalizar anticipadamente** (no recorrer servidores restantes) y **retornar** el resultado.  
+- Garantizar **ausencia de condiciones de carrera** sobre el contador compartido.
 
+> Puedes usar AtomicInteger o sincronización mínima sobre la región crítica del contador.
+
+### LA URL del repositorio de BLACK_LIST_VALIDATOR ES: https://github.com/LauraVenegas6/PARALLELISM-JAVA_THREADS-INTRODUCTION_BLACKLISTSEARCH.git  
+
+En el anterior laboratorio teniamos que para que un host fuera confiable o no el  BLACK_LIST_ALARM_COUNT debia ser 5, si es mayor de 5 no es confiable.  
+
+Lo primero que hacemos es verificar la clase hostBackListValidator, áca tenemos dos métodos (checkHost), uno donde solo un hilo lo manejas este es secuencial, y el otro lo hace de forma paralela. Este último es importante y en el que nos vamos a enfocar pues varios hilos trabajan en él y es acá donde hacemos la cuenta global de ocurrencias para saber si es confiable o no.   
+Lo que hacemos es cambiar el tipo del contador  globalOccurrences a AtomicInteger, puest este asegura que el contador global funcione correctamente en este entorno que es multihilo, sin necesidad de sincronización manual.  
+
+<p align="center">
+  <img src="img/AtomicInteger" width="350"/>
+</p>
+
+Lo que hacemos es verificar que si globalOccurrences.get() >= BLACK_LIST_ALARM_COUNT ese será nuestra alarma para parar y no segir contando pues ya tendriamos que es una IP no confiable.  
+
+Tambien nos enfocamos en la clase BackListThread donde se agregó un contador global de ocurrencias (AtomicInteger globalOccurrences) compartido entre todos los hilos, para detectar rápidamente cuando se alcanza el límite de listas negras. Antes de revisar cada servidor, el hilo consulta el valor de globalOccurrences, se detiene si ya se llegó al límite y devuelve el resultado.  
+
+<p align="center">
+  <img src="img/atomicInteger2" width="350"/>
+</p>
+
+Respecto a las condiciones de carrera nosotros aseguramos su ausencia sobre el contador compartido usando AtomicInteger, este ofrece métodos atómicos que usamos como incrementAndGet y get, que permiten que varios hilos incremente y consulten al mismo tiempo sin interferirse ni producir errores de concurrencin, con esto no usamos synchronized ni bloqueos manuales y termina siendo Thread-safe.
+---
 
