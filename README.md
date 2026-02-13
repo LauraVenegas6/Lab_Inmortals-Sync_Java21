@@ -332,5 +332,48 @@ Tambien nos enfocamos en la clase BackListThread donde se agregó un contador gl
 
 Respecto a las condiciones de carrera nosotros aseguramos su ausencia sobre el contador compartido usando AtomicInteger, este ofrece métodos atómicos que usamos como incrementAndGet y get, que permiten que varios hilos incremente y consulten al mismo tiempo sin interferirse ni producir errores de concurrencin, con esto no usamos synchronized ni bloqueos manuales y termina siendo Thread-safe.  
 
+## Parte III — (Avance) Sincronización y *Deadlocks* con *Highlander Simulator*
+
+1. Revisa la simulación: N inmortales; cada uno **ataca** a otro. El que ataca **resta M** al contrincante y **suma M/2** a su propia vida.  
+2. **Invariante**: con N y salud inicial `H`, la suma total debería permanecer constante (salvo durante un update). Calcula ese valor y úsalo para validar.  
+
+<img width="928" height="175" alt="image" src="https://github.com/user-attachments/assets/5d748efb-1a05-4128-ae98-8b2d91bd55ba" />
+
+Formula: *SaludTotal = (N × H) − (Peleas × D/2)*
+
+La salud total del sistema no se mantiene constante, sino que esta por cada pelea debe de ir disminuyendo con el tiempo; esto se debe a que el sistema pierde energia en cada pelea y el atacante quita una cantidad completa de vida mientras que solo recupera la mitad del daño que hace. Si la suma de la vida de los inmortales cumple con este invariante, podemos decir que esta correcto. 
+
+3. Ejecuta la UI y prueba **“Pause & Check”**. ¿Se cumple el invariante? Explica.  
+
+
+<img width="687" height="272" alt="image" src="https://github.com/user-attachments/assets/0afbb489-17f7-4471-876b-fd3c0adb0c1b" />
+
+Podemos decir que el invariante se cumple a la perfección al utilizar la función "Pause & Check", y la razón de esto está en el mecanismo de sincronización que podemos observa en la imagen del código. Al pulsar el botón, el sistema no realiza el cálculo de inmediato, sino que primero emite una orden global de detención y entra en un estado de espera estricta (utilizando un bloqueo wait() o await()); la interfaz se detiene intencionalmente y no avanza hasta recibir la confirmación absoluta de que el contador de inmortales detenidos coincide con el total de inmortales vivos. De esta forma, el cálculo de la salud total solo se ejecuta cuando tenemos la certeza de que todos los hilos están completamente "dormidos" sin nadie atacando ni curándose en ese instante, lo cual garantiza que el estado de los datos sea consistente y evita cualquier error matemático que ocurriría si leyéramos el estado de un inmortal justo a mitad de una pelea.
+
+4. **Pausa correcta**: asegura que **todos** los hilos queden pausados **antes** de leer/imprimir la salud; implementa **Resume** (ya disponible).  
+
+<img width="614" height="442" alt="image" src="https://github.com/user-attachments/assets/4f3a9ba2-b4ba-4b97-aac6-5cd6cb50dcab" />
+
+Sí, la consistencia del sistema es robusta y el invariante se mantiene inalterable, incluso bajo condiciones de estrés como presionar los botones "Reanudar" y "Pausar" repetida y rápidamente.
+
+La estabilidad del sistema no es casualidad, sino el resultado de un diseño de reinicio de estado limpio. La clave técnica reside en la lógica del método resume(). Cada vez que se ordena al juego continuar, el sistema no solo libera los hilos para que sigan peleando, sino que realiza una acción crítica: fuerza el reinicio del contador de "hilos pausados" a cero.
+
+Este reinico es fundamental. Porque sin esto,si el usuario pausara de nuevo muy rápido, el sistema podría confundirse y creer que algunos hilos siguen detenidos desde la pausa anterior, lo que llevaría a sumar la salud mientras los inmortales se mueven. Al resetear el contador a cero obligatoriamente en cada reanudación, garantizamos que cada nueva pausa sea un evento fresco e independiente, obligando al sistema a esperar nuevamente la confirmación de parada de todos y cada uno de los inmortales antes de atreverse a verificar el invariante.
+
+5. Haz *click* repetido y valida consistencia. ¿Se mantiene el invariante?  
+6. **Regiones críticas**: identifica y sincroniza las secciones de pelea para evitar carreras; si usas múltiples *locks*, anida con **orden consistente**:
+   ```java
+   synchronized (lockA) {
+     synchronized (lockB) {
+       // ...
+     }
+   }
+   ```
+7. Si la app se **detiene** (posible *deadlock*), usa **`jps`** y **`jstack`** para diagnosticar.  
+8. Aplica una **estrategia** para corregir el *deadlock* (p. ej., **orden total** por nombre/id, o **`tryLock(timeout)`** con reintentos y *backoff*).  
+9. Valida con **N=100, 1000 o 10000** inmortales. Si falla el invariante, revisa la pausa y las regiones críticas.  
+10. **Remover inmortales muertos** sin bloquear la simulación: analiza si crea una **condición de carrera** con muchos hilos y corrige **sin sincronización global** (colección concurrente o enfoque *lock-free*).  
+11. Implementa completamente **STOP** (apagado ordenado).
+
 ---
 
