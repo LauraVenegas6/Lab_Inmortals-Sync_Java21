@@ -328,7 +328,7 @@ Tambien nos enfocamos en la clase BackListThread donde se agregó un contador gl
 
 <p align="center">
   <img src="img/AtomicInteger2.png" width="350"/>
-</p>
+</p>  
 
 Respecto a las condiciones de carrera nosotros aseguramos su ausencia sobre el contador compartido usando AtomicInteger, este ofrece métodos atómicos que usamos como incrementAndGet y get, que permiten que varios hilos incremente y consulten al mismo tiempo sin interferirse ni producir errores de concurrencin, con esto no usamos synchronized ni bloqueos manuales y termina siendo Thread-safe.
 ---
