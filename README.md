@@ -361,6 +361,17 @@ La estabilidad del sistema no es casualidad, sino el resultado de un diseño de 
 Este reinico es fundamental. Porque sin esto,si el usuario pausara de nuevo muy rápido, el sistema podría confundirse y creer que algunos hilos siguen detenidos desde la pausa anterior, lo que llevaría a sumar la salud mientras los inmortales se mueven. Al resetear el contador a cero obligatoriamente en cada reanudación, garantizamos que cada nueva pausa sea un evento fresco e independiente, obligando al sistema a esperar nuevamente la confirmación de parada de todos y cada uno de los inmortales antes de atreverse a verificar el invariante.
 
 5. Haz *click* repetido y valida consistencia. ¿Se mantiene el invariante?  
+
+<img width="764" height="440" alt="image" src="https://github.com/user-attachments/assets/ab37adb7-c487-4977-ad5a-9599e0750c99" />
+
+<img width="767" height="448" alt="image" src="https://github.com/user-attachments/assets/c9cc7695-bfd3-4200-9730-ce5faf4eecca" />
+
+<img width="778" height="446" alt="image" src="https://github.com/user-attachments/assets/360f6220-f8ea-4579-8274-09529701c554" />
+
+Sí, la coherencia del sistema no se altera aunque el botón de pausar y reanudar se presione muchas veces seguidas o muy rápido. Esto funciona porque cada vez que se vuelve a iniciar la simulación, el programa reinicia el contador que lleva el registro de cuántos inmortales están detenidos. Es decir, empieza nuevamente desde cero.
+
+Al hacer esto, el sistema no mezcla información de pausas anteriores. En cada nueva pausa vuelve a esperar que todos los inmortales estén completamente detenidos antes de calcular la salud total. Gracias a este procedimiento, los valores siempre se calculan en un momento estable y los resultados coinciden correctamente en cada verificación.
+
 6. **Regiones críticas**: identifica y sincroniza las secciones de pelea para evitar carreras; si usas múltiples *locks*, anida con **orden consistente**:
    ```java
    synchronized (lockA) {
@@ -369,11 +380,52 @@ Este reinico es fundamental. Porque sin esto,si el usuario pausara de nuevo muy 
      }
    }
    ```
+
+   <img width="921" height="748" alt="image" src="https://github.com/user-attachments/assets/6b8d2047-d5c7-4c28-96c5-43f28aa76065" />
+
+Identificamos que el momento crítico del sistema ocurre exactamente cuando dos personajes se atacan, modifican su salud y registran la pelea en el marcador. Para evitar que los datos se mezclen o se calculen mal si varios intentan interactuar al mismo tiempo, lo que hicimos fue asegurar o bloquear temporalmente a los dos involucrados antes de que se hagan daño. La clave para que esta protección no haga que el juego se quede congelado 
+
 7. Si la app se **detiene** (posible *deadlock*), usa **`jps`** y **`jstack`** para diagnosticar.  
+
+Si la aplicación se llega a detener por completo, nos encontramos ante un bloqueo crítico donde los personajes se quedan atrapados en un círculo infinito de espera sin poder avanzar. Para diagnosticar esto, usamos la herramienta jps para localizar el número del proceso de nuestra aplicación que estaba corriendo en nuestro computador, y luego utilizamos jstack para extraer un reporte detallado del estado de todos los participantes en ese instante.
+
+Como podemos ver en la siguiente imagen:
+
+<img width="1066" height="898" alt="image" src="https://github.com/user-attachments/assets/60660e94-4a1f-4181-9ca6-1b1c9fee1fea" />
+
 8. Aplica una **estrategia** para corregir el *deadlock* (p. ej., **orden total** por nombre/id, o **`tryLock(timeout)`** con reintentos y *backoff*).  
+
+<img width="709" height="389" alt="image" src="https://github.com/user-attachments/assets/8bd9918d-dfab-48c0-a3b4-744d5705f1e2" />
+
+Aplicamos una estrategia de ordenamiento, basándonos en el nombre de cada personaje. En lugar de permitir que interactúen sin control, establecimos una regla de tránsito estricta para el momento de las peleas y es que el sistema siempre debe asegurar primero al inmortal cuyo nombre aparezca antes en orden alfabético, sin importar quién inició el ataque. Al obligar a todos los participantes a seguir exactamente la misma fila y el mismo orden antes de cualquier enfrentamiento, eliminamos por completo la posibilidad de que se queden esperándose mutuamente en un círculo infinito.  Con esta regla que parece simple, garantizamos que la simulación fluya de manera continua, segura y sin bloqueos.
+
 9. Valida con **N=100, 1000 o 10000** inmortales. Si falla el invariante, revisa la pausa y las regiones críticas.  
-10. **Remover inmortales muertos** sin bloquear la simulación: analiza si crea una **condición de carrera** con muchos hilos y corrige **sin sincronización global** (colección concurrente o enfoque *lock-free*).  
+
+**N=100** 
+
+<img width="620" height="440" alt="image" src="https://github.com/user-attachments/assets/8a101d9b-aad2-4f93-89a7-cf99e6087691" />
+
+<img width="671" height="435" alt="image" src="https://github.com/user-attachments/assets/fdd42644-752f-40e3-a779-cd437fccb0e1" />
+
+**N=1000**
+<img width="616" height="445" alt="image" src="https://github.com/user-attachments/assets/2a259069-7b78-4080-aecd-49b87f2a9990" />
+
+
+10. **Remover inmortales muertos** sin bloquear la simulación: analiza si crea una **condición de carrera** con muchos hilos y corrige **sin sincronización global** (colección concurrente o enfoque *lock-free*).
+
+La estrategia segura que se aplicó en la clase Immortal fue simplemente ignorarlos. Mediante una sencilla regla, si la salud de un personaje llega a cero, el sistema bloquea automáticamente cualquier tipo de interacción con él; de esta forma, el personaje caído se convierte en un participante inactivo que ya no ataca ni recibe daño, lo que permite que la simulación siga fluyendo de manera estable sin necesidad de alterar los registros originales.
+
 11. Implementa completamente **STOP** (apagado ordenado).
+
+<img width="837" height="454" alt="image" src="https://github.com/user-attachments/assets/f55dcbd7-3e6c-4122-b5c2-cf23eca4cbf3" />
+
+<img width="622" height="449" alt="image" src="https://github.com/user-attachments/assets/b3318f32-524f-4281-9c8c-54c75c9fcb50" />
+
+Para implementar el botón STOP, no decidimos cerrar el programa de manera brusca, sino que se creó un procedimiento organizado para finalizar la simulación sin dejar nada a medias.
+
+- Primero, el sistema les indica a todos los inmortales que deben detenerse, cambiando una señal interna que les informa que el juego ya terminó.
+
+- Segundo, si la simulación estaba en pausa, se reanuda temporalmente para asegurarse de que todos los personajes reciban la orden de finalizar. Así se evita que alguno quede detenido esperando indefinidamente.
 
 ---
 
