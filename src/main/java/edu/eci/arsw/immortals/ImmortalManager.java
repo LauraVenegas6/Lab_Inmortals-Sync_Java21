@@ -35,6 +35,7 @@ public final class ImmortalManager implements AutoCloseable {
 
   public synchronized void start() {
     if (exec != null) stop();
+    controller.setTotalThreads(population.size());
     exec = Executors.newVirtualThreadPerTaskExecutor();
     for (Immortal im : population) {
       futures.add(exec.submit(im));
@@ -43,9 +44,28 @@ public final class ImmortalManager implements AutoCloseable {
 
   public void pause() { controller.pause(); }
   public void resume() { controller.resume(); }
+  
   public void stop() {
-    for (Immortal im : population) im.stop();
-    if (exec != null) exec.shutdownNow();
+    // 1. Señalizar a todos los inmortales que deben detenerse
+    for (Immortal im : population) {
+      im.stop();
+    }
+
+    // 2. Reanudar si están pausados para que puedan terminar
+    controller.resume();
+    
+    // 3. Cerrar executor y esperar terminación ordenada
+    if (exec != null) {
+      exec.shutdown();
+      try {
+        if (!exec.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+          exec.shutdownNow();
+        }
+      } catch (InterruptedException e) {
+        exec.shutdownNow();
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   public int aliveCount() {
@@ -58,6 +78,14 @@ public final class ImmortalManager implements AutoCloseable {
     long sum = 0;
     for (Immortal im : population) sum += im.getHealth();
     return sum;
+  }
+
+  public long expectedHealth() {
+    return (long) population.size() * initialHealth - (scoreBoard.totalFights() * (damage / 2));
+  }
+
+  public boolean checkInvariant() {
+    return totalHealth() == expectedHealth();
   }
 
   public List<Immortal> populationSnapshot() {
